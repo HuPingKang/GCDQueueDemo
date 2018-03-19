@@ -6,6 +6,24 @@
 //  Copyright © 2018年 qwer. All rights reserved.
 //
 
+/**
+ *  Diff between SerialQueue and ConcurrentQueue
+ *  1.SerialQueue:MainQueue and Create new SerialQueue
+ *  2.ConcurrentQueue:GlobalQueue and Create new ConcurrentQueue
+ *
+ *  System provide a SerialQueue(MainQueue) and four ConcurrentQueue(DISPATCH_QUEUE_PRIORITY_HIGH/DEFAULT/LOW/BACKGROUND)
+ *  diff:
+ *      SerialQueue:
+ *              1.only one task to be executed at a time;
+ *              2.serial visit a shared resource
+ *              3.serial executed tasks on syncQueue
+ *      ConcurrentQueue:
+ *              1.more than one task to be executed at a time
+ *              2.visit a shared resource without serial
+ *              3.task executed no serial
+ */
+
+
 import UIKit
 
 class ViewController: UIViewController {
@@ -34,6 +52,7 @@ class ViewController: UIViewController {
         
     }
 
+    
     @IBAction func mainSync(_ sender: Any) {
         
         let imageVs:[UIImageView] = [self.imgVOne,self.imgVTwo,self.imgVThr,self.imgVFor];
