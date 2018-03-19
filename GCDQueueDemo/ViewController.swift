@@ -21,6 +21,14 @@
  *              1.more than one task to be executed at a time
  *              2.visit a shared resource without serial
  *              3.task executed no serial
+ ***
+ *   OperationQueue: based on GCD,better than GCD;(NSBlockOperation/NSInvocationOperation)
+ *          1.not serial on FIFO: by set priority level and relations between OperationQueues to control codes executed seriel;
+ *      OperationQueues's cancel function:
+ *              1.if your task finished,cancel function will be of no effect;
+ *              2.if your task on executing,cancel function will not make your task cancelled,but set the property of cancel to be true
+ *              3.if your task waiting for executing, your task will cancel;
+ *      OperationQueues properties:isCancelled/isExecuting/isFinished/isReady;
  */
 
 
@@ -30,13 +38,29 @@ class ViewController: UIViewController {
 
     @IBOutlet weak var mainSyncBtn: UIButton!
     @IBOutlet weak var globalAsyncBtn: UIButton!
+    
+    @IBOutlet weak var serialASyncBtn: UIButton!
+    @IBOutlet weak var concurrentAsyncBtn: UIButton!
+    
     @IBOutlet weak var imgVOne: UIImageView!
     @IBOutlet weak var imgVTwo: UIImageView!
     @IBOutlet weak var imgVThr: UIImageView!
     @IBOutlet weak var imgVFor: UIImageView!
     
+    //
+    private var queue:OperationQueue? = OperationQueue()
+    
+    @IBOutlet weak var opAsyncBtn: UIButton!
+    @IBOutlet weak var opSyncBtn: UIButton!
+    
+    
+    private var imageVs:[UIImageView] {
+        
+        return  [self.imgVOne,self.imgVTwo,self.imgVThr,self.imgVFor]
+    }
+    
     private var images:[String]{
-        let iges:[String] = ["https://timgsa.baidu.com/timg?image&quality=80&size=b9999_10000&sec=1521446901598&di=e655ad1a74a7bd149832481865ff8a5e&imgtype=0&src=http%3A%2F%2Fimg.zcool.cn%2Fcommunity%2F018d4e554967920000019ae9df1533.jpg%40900w_1l_2o_100sh.jpg","https://timgsa.baidu.com/timg?image&quality=80&size=b9999_10000&sec=1521446961362&di=b60930a4167ec65218c54e391bc2d098&imgtype=0&src=http%3A%2F%2Fpic48.nipic.com%2Ffile%2F20140825%2F11624852_152638235000_2.jpg","https://timgsa.baidu.com/timg?image&quality=80&size=b9999_10000&sec=1521446961361&di=0873449e0d459cbea10ec5690a8d4293&imgtype=0&src=http%3A%2F%2Fimg.zcool.cn%2Fcommunity%2F01690955496f930000019ae92f3a4e.jpg%402o.jpg","https://timgsa.baidu.com/timg?image&quality=80&size=b9999_10000&sec=1521446961361&di=d5a96db0939b34e1d797f6a886c686d0&imgtype=0&src=http%3A%2F%2Fimg.zcool.cn%2Fcommunity%2F01d881579dc3620000018c1b430c4b.JPG%403000w_1l_2o_100sh.jpg"]
+        let iges:[String] = ["http://pic1.win4000.com/wallpaper/8/599d1d6647c92.jpg","http://pic1.win4000.com/wallpaper/8/599d1d68dcc0f.jpg","http://pic1.win4000.com/wallpaper/8/599d1d6e8b589.jpg","http://pic1.win4000.com/wallpaper/8/599d1d6647c92.jpg"]
         
         return iges;
         
@@ -45,17 +69,48 @@ class ViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        self.mainSyncBtn.layer.cornerRadius = 5
-        self.mainSyncBtn.layer.masksToBounds = true
-        self.globalAsyncBtn.layer.cornerRadius = 5
-        self.globalAsyncBtn.layer.masksToBounds = true
+        let btns:[UIButton] = [self.mainSyncBtn,self.serialASyncBtn,self.globalAsyncBtn,self.concurrentAsyncBtn,self.opSyncBtn,self.opAsyncBtn
+        ]
+        
+        btns.forEach { (bt) in
+            bt.layer.cornerRadius = 5
+            bt.layer.masksToBounds = true
+            bt.isEnabled = false
+        }
+        
+        //Create an original Request of GET
+        let getUrl = URL.init(string: "http://api-pre.well-talent.com.cn/listening/courses?userAccountId=0&salt=0")
+        let getRequest = NSMutableURLRequest.init(url: getUrl!)
+        getRequest.httpMethod = "GET"
+        let session:URLSession = URLSession.shared
+        let downloadTask = session.dataTask(with: getUrl!) { (json, response, error) in
+            print("GET请求结束")
+        }
+        //start task；
+        downloadTask.resume()
+        
+        //Create an original Request of POST: username=520it&pwd=520it&type=JSON
+        let postUrl = URL.init(string: "http://api-pre.well-talent.com.cn/listening/login/mobilepwd")
+        let request = NSMutableURLRequest.init(url: postUrl!)
+        request.httpMethod = "POST"
+        request.httpBody = "mobile=fVBYI1AEYE9wB4667ad0NxDXuPXCDl7HX9HQ59mbJbuCylpupoH011B0HP+PWwIYlC0zTkU5drfSEmTl/YJpIo4ODcQOBHklSEzzZFp91mOlLW33fAd/dLyhi+b29azwB+o9QhKU971Nxcoi24oENY+OGI7odz2GX/PjuAvgUhw=&password=Pk5C31JJl3op/1ZzsFnf05T/QSY21TVzFWxQw/+4nt1BYFeHbCmLQMgJcwEl5HvFfub/Y6IO9QRTGMuKFb2b+bh4rOvHr0giaP2llTMuYk4+/2DuePTqFfPKeAALbt72LVyd1mNK4Ffv4nUwiKNk4iB4EkJqW0kAfkakkqLUsHw=".data(using: .utf8)
+        let postData = session.dataTask(with: postUrl!) { (json, response, error) in
+            print("POST请求结束")
+            
+            //the URLSession Executed on concurrentQueue not on MainQueue,so all Ui reload tasks must back to mainQueue:
+            DispatchQueue.main.async {
+                btns.forEach({ (bt) in
+                    bt.isEnabled = true
+                })
+            }
+
+        }
+        postData.resume()
         
     }
 
-    
     @IBAction func mainSync(_ sender: Any) {
         
-        let imageVs:[UIImageView] = [self.imgVOne,self.imgVTwo,self.imgVThr,self.imgVFor];
         //On MainQueue loading Images From Internet:
         for kk in 0..<self.images.count {
             
@@ -64,7 +119,7 @@ class ViewController: UIViewController {
                 
                 let imageData = try? Data.init(contentsOf: imageUrl)
                 imageVs[kk].image = UIImage.init(data: imageData!)
-                
+                print(kk)
             }
             
         }
@@ -75,19 +130,18 @@ class ViewController: UIViewController {
     
     @IBAction func globalAsync(_ sender: Any) {
         
-        let imageVs:[UIImageView] = [self.imgVOne,self.imgVTwo,self.imgVThr,self.imgVFor];
-        
         //On GlobalQueue loading images from internet:
-        DispatchQueue.global().async {
-            for kk in 0..<self.images.count {
-                
+        for kk in 0..<self.images.count {
+            
+            DispatchQueue.global().async {
                 let imageStr = self.images[kk]
                 if let imageUrl = URL.init(string: imageStr) {
                     
                     let imageData = try? Data.init(contentsOf: imageUrl)
                     //back to mainQueue reload Ui:
                     DispatchQueue.main.async {
-                        imageVs[kk].image = UIImage.init(data: imageData!)
+                        self.imageVs[kk].image = UIImage.init(data: imageData!)
+                        print(kk)
                     }
                     
                 }
@@ -96,6 +150,94 @@ class ViewController: UIViewController {
         }
         
         print("all task on globalQueue execute finished")
+        
+    }
+    
+    //
+    @IBAction func serialAsync(_ sender: Any) {
+        
+        //create a serial queue and serial executed tasks:
+        let serialQueue = DispatchQueue(label: "com.apple.imagesQueue")
+        
+        for kk in 0..<self.images.count {
+            serialQueue.async {
+                let imageStr = self.images[kk]
+                if let imageUrl = URL.init(string: imageStr) {
+                    
+                    let imageData = try? Data.init(contentsOf: imageUrl)
+                    //back to mainQueue reload Ui:
+                    DispatchQueue.main.async {
+                        self.imageVs[kk].image = UIImage.init(data: imageData!)
+                        print(kk)
+                    }
+                }
+            }
+        }
+    }
+    
+    @IBAction func concurrentAsync(_ sender: Any) {
+        
+        //create a concurrent queue and concurrent executed tasks:
+        //six priority level of GCD: background,utility,userInitiated,unspecified,default,userInteractive (low->high)
+        //create a concurrentQueue:
+       let concurrentQueue = DispatchQueue.init(label: "com.apple.images", qos: .background, attributes: .concurrent)
+        for kk in 0..<self.images.count {
+            concurrentQueue.async {
+                let imageStr = self.images[kk]
+                if let imageUrl = URL.init(string: imageStr) {
+                    let imageData = try? Data.init(contentsOf: imageUrl)
+                    //back to mainQueue reload Ui:
+                    DispatchQueue.main.async {
+                        self.imageVs[kk].image = UIImage.init(data: imageData!)
+                        print(kk)
+                    }
+                }
+            }
+        }
+    }
+    
+    @IBAction func opAsync(_ sender: Any) {
+        
+        for kk in 0..<self.images.count {
+            
+            queue?.addOperation({
+                let imageStr = self.images[kk]
+                if let imageUrl = URL.init(string: imageStr) {
+                    let imageData = try? Data.init(contentsOf: imageUrl)
+                    //back to mainQueue reload Ui:
+                    DispatchQueue.main.async {
+                        self.imageVs[kk].image = UIImage.init(data: imageData!)
+                        print(kk)
+                    }
+                }
+            })
+        }
+    }
+    
+    @IBAction func opSync(_ sender: Any) {
+        
+        for kk in 0..<self.images.count {
+            let operation = BlockOperation.init(block: {
+                let imageStr = self.images[kk]
+                if let imageUrl = URL.init(string: imageStr) {
+                    let imageData = try? Data.init(contentsOf: imageUrl)
+                    //back to mainQueue reload Ui:
+                    DispatchQueue.main.async {
+                        self.imageVs[kk].image = UIImage.init(data: imageData!)
+                        print(kk)
+                    }
+                }
+            })
+            
+            //if the task not executed , the completionBlock will also be executed;
+            operation.completionBlock = {
+                print("operation \(kk) finished")
+            }
+            queue?.addOperation(operation)
+            //cancel waiting tasks:
+            self.queue?.operations.last?.cancel()
+            
+        }
         
     }
     
