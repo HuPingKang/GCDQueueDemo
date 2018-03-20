@@ -196,10 +196,19 @@ class ViewController: UIViewController {
         }
     }
     
-    @IBAction func opAsync(_ sender: Any) {
+    @IBAction func opQueue(_ sender: Any) {
+        
+        //add operation on main thread
+//        OperationQueue.main.addOperation {
+//            print(Thread.current == Thread.main) //true
+//        }
+//        OperationQueue.current?.addOperation({
+//            print(Thread.current == Thread.main) //true
+//        })
+//        return
         
         for kk in 0..<self.images.count {
-            
+     
             queue?.addOperation({
                 let imageStr = self.images[kk]
                 if let imageUrl = URL.init(string: imageStr) {
@@ -214,9 +223,49 @@ class ViewController: UIViewController {
         }
     }
     
-    @IBAction func opSync(_ sender: Any) {
+    @IBAction func blockASync(_ sender: Any) {
+
+        //Create two blockQueue:
+//        let blockQueue1 = BlockOperation.init {
+//        }
+//        let blockQueue2 = BlockOperation.init {
+//        }
+        
+//    *** set priority of queue: high level,first executed;
+//        blockQueue2.queuePriority = .veryHigh
+//        blockQueue1.queuePriority = .veryLow
+
+//        set dependency will more effective than set queuePriority;
+//        set dependency: blockQueue2 will executed before blockQueue1;
+//        blockQueue1.addDependency(blockQueue2)
+       // FIFO:
+       // blockQueue add to queue,blockQueue task will be executed;
+//         if blockQueue not add to queue,blockQueue's task will be executed on main thread;
+//        addOperation() and start() functions cannot used at the sametime;
+
+        //addOperation():blockQueue's task will be executed on Sub thred;
+//        self.queue?.addOperation(blockQueue1)
+//        self.queue?.addOperation(blockQueue2)
+//
+//        blockQueue2.completionBlock = {
+//            print("blockQueue2 executed completed \(Thread.current) \(Thread.main)")
+//        }
+//        blockQueue1.completionBlock = {
+//            print("blockQueue1 executed completed \(Thread.current) \(Thread.main)")
+//        }
+//
+//        blockQueue2.addExecutionBlock {
+//            print("blockQueue2 add other tasks")
+//        }
+        
+        //executed start() function, blockQueue task executed will block main Thread;
+//        blockQueue2.start()
+//        blockQueue1.start()
+        
+//        return;
         
         for kk in 0..<self.images.count {
+        
             let operation = BlockOperation.init(block: {
                 let imageStr = self.images[kk]
                 if let imageUrl = URL.init(string: imageStr) {
@@ -229,18 +278,19 @@ class ViewController: UIViewController {
                 }
             })
             
-            //if the task not executed , the completionBlock will also be executed;
-            operation.completionBlock = {
-                print("operation \(kk) finished")
-            }
             queue?.addOperation(operation)
+            //if the task not executed, the completionBlock will also be executed;
+            operation.completionBlock = {
+                print("operation finished")
+            }
+            
             //cancel waiting tasks:
-            self.queue?.operations.last?.cancel()
+            //self.queue?.operations.last?.cancel()
             
         }
         
     }
-    
+   
     override func didReceiveMemoryWarning() {
         super.didReceiveMemoryWarning()
         // Dispose of any resources that can be recreated.
