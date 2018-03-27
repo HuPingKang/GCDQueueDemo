@@ -290,7 +290,14 @@ class ViewController: UIViewController {
         }
         
     }
-   
+    
+    @IBAction func tapMe(_ sender: Any) {
+        
+        let vc = ImagesViewController()
+        self.navigationController?.pushViewController(vc, animated: true)
+        
+    }
+    
     override func didReceiveMemoryWarning() {
         super.didReceiveMemoryWarning()
         // Dispose of any resources that can be recreated.
